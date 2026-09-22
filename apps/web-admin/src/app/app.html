@@ -1,0 +1,260 @@
+<div class="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+  <!-- Header -->
+  <header class="border-b border-slate-800 bg-slate-900/70 backdrop-blur px-6 py-4 sticky top-0 z-20">
+    <div class="max-w-7xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="h-9 w-9 rounded-lg bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center font-bold text-lg shadow-sm">
+          A
+        </div>
+        <div>
+          <h1 class="text-lg font-semibold text-white tracking-tight">SSE Admin Dashboard</h1>
+          <p class="text-xs text-slate-400">Monitoramento em Tempo Real & Publicador Redis</p>
+        </div>
+      </div>
+
+      <!-- Status e Reconexão -->
+      <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-medium"
+          [ngClass]="{
+            'bg-indigo-500/10 text-indigo-400 border-indigo-500/20': adminService.status() === 'connected',
+            'bg-amber-500/10 text-amber-400 border-amber-500/20': adminService.status() === 'connecting',
+            'bg-rose-500/10 text-rose-400 border-rose-500/20': adminService.status() === 'disconnected'
+          }">
+          <span class="h-2 w-2 rounded-full"
+            [ngClass]="{
+              'bg-indigo-400 animate-pulse': adminService.status() === 'connected',
+              'bg-amber-400 animate-ping': adminService.status() === 'connecting',
+              'bg-rose-400': adminService.status() === 'disconnected'
+            }">
+          </span>
+          <span class="capitalize">
+            {{ adminService.status() === 'connected' ? 'SSE Admin Ativo' : adminService.status() === 'connecting' ? 'Conectando...' : 'Desconectado' }}
+          </span>
+        </div>
+
+        @if (adminService.status() === 'disconnected') {
+          <button
+            (click)="reconnect()"
+            class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg border border-slate-700 transition">
+            Reconectar
+          </button>
+        }
+      </div>
+    </div>
+  </header>
+
+  <!-- Metrics Bar -->
+  <div class="border-b border-slate-800/80 bg-slate-900/30">
+    <div class="max-w-7xl mx-auto px-6 py-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-4 flex items-center justify-between">
+        <div>
+          <span class="text-xs font-medium text-slate-400">Clientes Conectados (API 2)</span>
+          <p class="text-2xl font-bold text-white mt-0.5">{{ adminService.totalClients() }}</p>
+        </div>
+        <div class="p-2.5 bg-emerald-500/10 text-emerald-400 rounded-lg border border-emerald-500/20 text-lg">
+          👥
+        </div>
+      </div>
+
+      <div class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-4 flex items-center justify-between">
+        <div>
+          <span class="text-xs font-medium text-slate-400">Mensagens Publicadas</span>
+          <p class="text-2xl font-bold text-white mt-0.5">{{ adminService.sentHistory().length }}</p>
+        </div>
+        <div class="p-2.5 bg-indigo-500/10 text-indigo-400 rounded-lg border border-indigo-500/20 text-lg">
+          📤
+        </div>
+      </div>
+
+      <div class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-4 flex items-center justify-between">
+        <div>
+          <span class="text-xs font-medium text-slate-400">Eventos de Ciclo de Vida</span>
+          <p class="text-2xl font-bold text-white mt-0.5">{{ adminService.notifications().length }}</p>
+        </div>
+        <div class="p-2.5 bg-amber-500/10 text-amber-400 rounded-lg border border-amber-500/20 text-lg">
+          ⚡
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content Grid -->
+  <main class="max-w-7xl mx-auto p-6 flex-1 w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- Coluna Esquerda: Envio de Mensagens e Histórico (7 colunas) -->
+    <div class="lg:col-span-7 flex flex-col gap-6">
+      <!-- Formulário de Despacho -->
+      <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-6 shadow-lg backdrop-blur">
+        <h2 class="text-base font-semibold text-slate-200 mb-4 flex items-center gap-2">
+          <span>📨</span> Publicar Mensagem via Redis
+        </h2>
+
+        <form (ngSubmit)="handlePublish()" class="space-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1.5">Remetente</label>
+              <input
+                type="text"
+                [ngModel]="senderInput()"
+                (ngModelChange)="senderInput.set($event)"
+                name="sender"
+                placeholder="Ex: Suporte"
+                class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition"
+              />
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1.5">Destinatário</label>
+              <select
+                [ngModel]="targetClientId()"
+                (ngModelChange)="targetClientId.set($event)"
+                name="targetClientId"
+                class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition">
+                <option value="">📢 Todos os Clientes (Broadcast)</option>
+                @for (client of adminService.clients(); track client.clientId) {
+                  <option [value]="client.clientId">
+                    🎯 {{ client.clientName }} ({{ client.clientId.slice(0, 8) }}...)
+                  </option>
+                }
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1.5">Conteúdo da Mensagem</label>
+            <textarea
+              [ngModel]="contentInput()"
+              (ngModelChange)="contentInput.set($event)"
+              name="content"
+              rows="3"
+              placeholder="Digite a mensagem que será enviada aos clientes conectados via SSE..."
+              class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition resize-none"></textarea>
+          </div>
+
+          <div class="flex items-center justify-between pt-1">
+            <p class="text-xs text-slate-500">
+              A mensagem será enviada à <strong class="text-slate-400">API 1</strong> e propagada pelo <strong class="text-slate-400">Redis</strong> para a <strong class="text-slate-400">API 2</strong>.
+            </p>
+
+            <button
+              type="submit"
+              [disabled]="sending() || !contentInput().trim()"
+              class="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium px-5 py-2 rounded-lg text-sm transition shadow-sm hover:shadow-indigo-500/20 flex items-center gap-2">
+              @if (sending()) {
+                <span class="animate-spin h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full"></span>
+                <span>Publicando...</span>
+              } @else {
+                <span>Enviar para Redis</span>
+              }
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Histórico de Mensagens Enviadas -->
+      <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-6 shadow-lg flex-1 backdrop-blur">
+        <h2 class="text-base font-semibold text-slate-200 mb-4 flex items-center gap-2">
+          <span>📜</span> Histórico de Disparos
+        </h2>
+
+        <div class="space-y-3 max-h-[350px] overflow-y-auto">
+          @for (item of adminService.sentHistory(); track item.id) {
+            <div class="p-3.5 rounded-lg border border-slate-800/80 bg-slate-950/60 text-xs">
+              <div class="flex items-center justify-between mb-1">
+                <div class="flex items-center gap-2">
+                  <span class="font-semibold text-slate-200">{{ item.sender }}</span>
+                  <span class="text-slate-500">→</span>
+                  <span class="font-medium text-indigo-300">{{ item.target }}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="font-mono text-slate-500">{{ item.timestamp | date:'HH:mm:ss' }}</span>
+                  <span class="px-1.5 py-0.5 rounded text-[10px]"
+                    [ngClass]="item.status === 'sent' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'">
+                    {{ item.status === 'sent' ? 'Entregue' : 'Falha' }}
+                  </span>
+                </div>
+              </div>
+              <p class="text-slate-300 text-sm mt-1">{{ item.content }}</p>
+            </div>
+          } @empty {
+            <div class="p-8 text-center text-slate-500 border border-dashed border-slate-800 rounded-lg text-xs">
+              Nenhuma mensagem disparada nesta sessão.
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- Coluna Direita: Clientes Conectados e Eventos de Ciclo de Vida (5 colunas) -->
+    <div class="lg:col-span-5 flex flex-col gap-6">
+      <!-- Clientes Ativos -->
+      <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-6 shadow-lg backdrop-blur">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-base font-semibold text-slate-200 flex items-center gap-2">
+            <span>🟢</span> Clientes Ativos no SSE
+          </h2>
+          <span class="text-xs bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full border border-slate-700">
+            {{ adminService.totalClients() }} online
+          </span>
+        </div>
+
+        <div class="space-y-2.5 max-h-[300px] overflow-y-auto">
+          @for (client of adminService.clients(); track client.clientId) {
+            <div class="p-3 bg-slate-950/70 border border-slate-800/80 rounded-lg flex items-center justify-between hover:border-slate-700 transition">
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <p class="text-sm font-semibold text-white truncate">{{ client.clientName }}</p>
+                </div>
+                <p class="text-[11px] text-slate-500 font-mono mt-0.5 truncate">
+                  ID: {{ client.clientId }}
+                </p>
+                <p class="text-[10px] text-slate-500 mt-0.5">
+                  Conectou: {{ client.connectedAt | date:'HH:mm:ss' }}
+                </p>
+              </div>
+
+              <button
+                (click)="selectTarget(client.clientId)"
+                class="text-xs bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2.5 py-1.5 rounded-md transition ml-3 shrink-0">
+                Direcionar
+              </button>
+            </div>
+          } @empty {
+            <div class="p-8 text-center text-slate-500 border border-dashed border-slate-800 rounded-lg text-xs">
+              <p>Nenhum cliente conectado no momento.</p>
+              <p class="text-slate-600 mt-1">Abra uma ou mais abas do <strong>Web Client</strong> para ver as conexões em tempo real.</p>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Feed de Eventos do Ciclo de Vida -->
+      <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-6 shadow-lg flex-1 backdrop-blur">
+        <h2 class="text-base font-semibold text-slate-200 mb-4 flex items-center gap-2">
+          <span>⚡</span> Stream de Ciclo de Vida
+        </h2>
+
+        <div class="space-y-2 max-h-[300px] overflow-y-auto font-mono text-xs">
+          @for (notif of adminService.notifications(); track notif.timestamp + notif.client.clientId) {
+            <div class="p-2.5 rounded border"
+              [ngClass]="notif.type === 'client:connected' ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-400' : 'bg-rose-500/5 border-rose-500/20 text-rose-400'">
+              <div class="flex items-center justify-between">
+                <span class="font-semibold">
+                  {{ notif.type === 'client:connected' ? '● Conectou:' : '○ Desconectou:' }}
+                  {{ notif.client.clientName }}
+                </span>
+                <span class="text-slate-500 text-[10px]">{{ notif.timestamp | date:'HH:mm:ss' }}</span>
+              </div>
+              <span class="text-[10px] text-slate-500 block truncate mt-0.5">ID: {{ notif.client.clientId }}</span>
+            </div>
+          } @empty {
+            <div class="p-6 text-center text-slate-500 border border-dashed border-slate-800 rounded-lg text-xs">
+              Aguardando eventos de conexão...
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  </main>
+</div>

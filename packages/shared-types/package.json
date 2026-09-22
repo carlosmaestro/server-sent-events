@@ -1,0 +1,14 @@
+{
+  "name": "@sse-showcase/shared-types",
+  "version": "1.0.0",
+  "description": "Shared TypeScript types and constants for SSE showcase",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}

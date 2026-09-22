@@ -1,0 +1,32 @@
+{
+  "name": "server-sent-events-showcase",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Server-Sent Events (SSE) Distributed Architecture Showcase with Node.js, Redis, Angular and Docker",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "start:docker": "docker compose up --build",
+    "stop:docker": "docker compose down"
+  },
+  "keywords": [
+    "sse",
+    "server-sent-events",
+    "redis",
+    "angular",
+    "nodejs",
+    "typescript",
+    "docker"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
+    "postcss": "^8.5.28",
+    "tailwindcss": "^4.3.3"
+  }
+}

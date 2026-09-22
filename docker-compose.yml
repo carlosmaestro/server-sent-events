@@ -1,0 +1,82 @@
+services:
+  # 1. Redis: Broker de Mensageria e Controle de Estado
+  redis:
+    image: redis:7-alpine
+    container_name: sse_redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - sse_network
+
+  # 2. API 1: Auth & Publisher (Gera token e publica mensagens no Redis)
+  api-auth:
+    build:
+      context: .
+      dockerfile: apps/api-auth/Dockerfile
+    container_name: sse_api_auth
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=super-secret-key-sse-showcase
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - sse_network
+
+  # 3. API 2: SSE Gateway & Subscriber (Gerencia conexões SSE e escuta Redis)
+  api-sse:
+    build:
+      context: .
+      dockerfile: apps/api-sse/Dockerfile
+    container_name: sse_api_gateway
+    ports:
+      - "3002:3002"
+    environment:
+      - PORT=3002
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=super-secret-key-sse-showcase
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - sse_network
+
+  # 4. Web Admin: Painel Administrativo em Angular
+  web-admin:
+    build:
+      context: .
+      dockerfile: apps/web-admin/Dockerfile
+    container_name: sse_web_admin
+    ports:
+      - "4200:80"
+    depends_on:
+      - api-auth
+      - api-sse
+    networks:
+      - sse_network
+
+  # 5. Web Client: Aplicação Cliente em Angular
+  web-client:
+    build:
+      context: .
+      dockerfile: apps/web-client/Dockerfile
+    container_name: sse_web_client
+    ports:
+      - "4201:80"
+    depends_on:
+      - api-auth
+      - api-sse
+    networks:
+      - sse_network
+
+networks:
+  sse_network:
+    driver: bridge
